@@ -51,8 +51,3 @@ class snowflake_connector:
         
 sc = snowflake_connector()
 sc.upload_to_snowflake_datalake("../data/raw/PL_json.json")
-
-
-
-
-
