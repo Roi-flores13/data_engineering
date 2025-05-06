@@ -6,6 +6,10 @@ numpy
 pandas
 pip
 python-dotenv
-ruff
 scikit-learn
--e .
+snowflake-connector-python
+requests
+os
+subprocess
+pathlib
+json
