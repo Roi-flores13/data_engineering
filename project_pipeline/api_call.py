@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import time
 
-def extract_api_data():
+def extract_api_data() -> None:
     
     load_dotenv()
 
@@ -44,3 +44,10 @@ def extract_api_data():
                 json.dump(match_data, data_json, indent=4)
                 
             time.sleep(5)
+            
+def api_data_eraser(file_path="data/temp_raw") -> None:
+        
+    for file in os.listdir(file_path):
+        temp_file_path = os.path.join(file_path, file)
+        os.remove(temp_file_path)
+            

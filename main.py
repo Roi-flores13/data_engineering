@@ -1,4 +1,4 @@
-from project_pipeline.api_call import extract_api_data
+from project_pipeline.api_call import extract_api_data, api_data_eraser
 from project_pipeline.snowflake_job import snowflake_connector
 
 
@@ -9,3 +9,4 @@ if __name__ == "__main__":
     sc = snowflake_connector()
     print("Subiendo datos")
     sc.upload_to_snowflake_datalake("data/temp_raw")
+    # sc.erase_everything_from_datalake()

@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 import subprocess
+from project_pipeline.api_call import api_data_eraser
 class snowflake_connector:
     def __init__(self) -> None:
         
@@ -48,6 +49,9 @@ class snowflake_connector:
         except subprocess.CalledProcessError as e:
             print(f"Error al subir archivo a: {stage_name}")
             print(e.stderr)
+        
+        api_data_eraser()
+        
             
     def erase_everything_from_datalake(self, stage_name="@DATALAKE_FUTBOL", connection="my_connection") -> None:
         
