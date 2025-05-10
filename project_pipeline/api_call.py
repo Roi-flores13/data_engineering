@@ -10,7 +10,7 @@ class api_manager:
         load_dotenv()
         self.headers = { 'X-Auth-Token':  os.environ.get("API_TOKEN")} # Aqui se almacena el API_TOKEN del usuario
         
-    def extract_api_data(self) -> None:
+    def extract_api_data(self, temp_path="data/temp_raw") -> None:
         
         print("Iniciando extracción")
         
@@ -21,8 +21,8 @@ class api_manager:
 
         competitions_full = parameter_data["competitions"] # Extrae todas las competencias
 
-        competitions_codes = [competition["code"] for competition in competitions_full] # Extrae todos los códigos de todas las competencias
-        competitions_id = [competition["id"] for competition in competitions_full] # Extrae todos los ids para las competencias
+        competitions_codes = [competition["code"] for competition in competitions_full if competition["code"] not in [2000, 2018, 2152]] # Extrae todos los códigos de todas las competencias
+        competitions_id = [competition["id"] for competition in competitions_full if competition["id"] not in [2000, 2018, 2152]] # Extrae todos los ids para las competencias
 
         start = time.time()
         
@@ -50,7 +50,7 @@ class api_manager:
                     
                 time.sleep(5)
                 
-        self.__prepare_json_for_snowflake()
+        # self.__prepare_json_for_snowflake()
         
         finish = time.time()
         
@@ -68,7 +68,7 @@ class api_manager:
             output_file = temp_path.replace(".json", "_minified.json")
             with open(output_file, "w") as out:
                 json.dump(data, out)
-            print(f"[✓] Guardado como minificado JSON: {output_file}")
+            print(f"Guardado como minificado JSON: {output_file}")
             
             os.remove(temp_path)
 
