@@ -109,6 +109,7 @@ class snowflake_connector:
         import pandas as pd
 
     def extraer_tabla_desde_json_stage(self, folder_path="data/processed/") -> None:
+        print("entramos")
         cursor = self.conn.cursor()
 
         # 1. Usar base y schema
@@ -121,6 +122,7 @@ class snowflake_connector:
 
         for file in files:
             file_path = file[0]
+            print(file_path)
             file_name = file_path.split("/")[-1]
 
             print(f"Procesando: {file_name}")
@@ -131,38 +133,60 @@ class snowflake_connector:
                 FROM @DATALAKE_FUTBOL/{file_name}
                 (FILE_FORMAT => 'my_json_format')
             """)
-            rows = cursor.fetchall()
+            self.rows = cursor.fetchall()
 
-            if not rows:
+            if not self.rows:
                 print("Archivo vacío.")
                 continue
             
             if "standings" in file_name:
 
                 try:
-                    # 4. Asumimos que hay un solo objeto JSON por archivo
-                    raw_data_str = rows[0][0]  # primer dict completo del archivo
-                    raw_data = json.loads(raw_data_str)
-
-                    # 5. Extraer standings > table
-                    table = raw_data["standings"][0]["table"]
-
-                    # 6. Normalizar a DataFrame
-                    df = pd.json_normalize(table)
-
-                    # 7. Seleccionar columnas clave
-                    df_final = df[[
-                        "position", "team.name", "playedGames", "points",
-                        "won", "draw", "lost", "goalsFor", "goalsAgainst", "goalDifference"
-                    ]]
-
-                    # 8. Guardar CSV
-                    output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
-                    output_file = f"{folder_path}" + output_name
-                    df_final.to_csv(output_file, index=False)
-
-                    print(f"Guardado como: {output_file}")
-
+                    print("try executed")
+                    self.__standings_to_csv(folder_path, file_path)
+                    
                 except Exception as e:
                     print(f"Error procesando {file_path}: {e}")
+                    
+                    
+    
+    def __standings_to_csv(self, folder_path, file_path) -> None:
+        # Asumimos que hay un solo objeto JSON por archivo
         
+        raw_data_str = self.rows[0][0]  # primer dict completo del archivo
+        raw_data = json.loads(raw_data_str)
+
+        # Extraer standings > table
+        table = raw_data["standings"][0]["table"]
+
+        # Normalizar a DataFrame
+        df = pd.json_normalize(table)
+
+        # Seleccionar columnas clave
+        df_final = df[[
+            "position", "team.name", "playedGames", "points",
+            "won", "draw", "lost", "goalsFor", "goalsAgainst", "goalDifference"
+        ]]
+
+        # Guardar CSV
+        output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
+        output_file = f"{folder_path}" + output_name
+        df_final.to_csv(output_file, index=False)
+
+        print(f"Guardado como: {output_file}")
+        
+    
+    def __compatition_to_csv(self) -> None:
+        
+        with open("data/temp_raw/competition_BL1.json", "r") as f:
+            data = json.load(f)
+
+        # Extraer la parte tabular
+        seasons = data["seasons"]
+
+        # Normalizar la lista de temporadas
+        df = pd.json_normalize(seasons, sep='.', max_level=1)
+
+        # Guardar como CSV
+        df.to_csv("data/processed/seasons_BL1.csv", index=False)
+
