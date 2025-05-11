@@ -29,7 +29,7 @@ class snowflake_connector:
         
         print("conexión establecida con Snowflake")
         
-    def upload_to_snowflake_datalake(self, local_folder_path="data/temp_raw", stage_name='@DATALAKE_FUTBOL', connection='my_connection') -> None:
+    def upload_to_snowflake_datalake(self, local_folder_path="data/temp_raw", stage_name='@DATALAKE_FUTBOL', connection='my_connection', erase_api_temp=True) -> None:
         
         print("Subiendo datos")
         
@@ -54,7 +54,8 @@ class snowflake_connector:
             print(f"Error al subir archivo a: {stage_name}")
             print(e.stderr)
         
-        api_manager.api_data_eraser()
+        if erase_api_temp:
+            api_manager.api_data_eraser()
         
             
     def erase_everything_from_datalake(self, stage_name="@DATALAKE_FUTBOL", connection="my_connection") -> None:
@@ -78,38 +79,8 @@ class snowflake_connector:
             print(e.stderr)
             
             
-    def json_to_csv(self):
-        
-        # cursor = self.conn.cursor()
-        # cursor.execute("USE database FUTBOL_DATA")
-        # cursor.execute("USE SCHEMA STORAGE")
-        # cursor.execute("LIST @DATALAKE_FUTBOL")
-        
-        # files = cursor.fetchall()
-        
-        # for file in files:
-        #     file_path = file[0]
-            
-        #     query = f"""
-        #         SELECT $1 
-        #         FROM @DATALAKE_FUTBOL/{file_path}
-        #         (FILE_FORMAT => 'my_json_format')
-        #     """
-            
-        #     cursor.execute(query)
-        #     rows = cursor.fetchall()
-            
-        #     df = pd.DataFrame([row[0] for row in rows])
-            
-        #     nombre_salida = file_path.split("/")[-1].replace(".json", "csv")
-        #     df.to_csv(nombre_salida, index=False)
-            
-        #     print(f"Archivo guardado como {nombre_salida}")
-    
-        import pandas as pd
-
     def extraer_tabla_desde_json_stage(self, folder_path="data/processed/") -> None:
-        print("entramos")
+        
         cursor = self.conn.cursor()
 
         # 1. Usar base y schema
@@ -142,28 +113,42 @@ class snowflake_connector:
             if "standings" in file_name:
 
                 try:
-                    print("try executed")
                     self.__standings_to_csv(folder_path, file_path)
                     
                 except Exception as e:
                     print(f"Error procesando {file_path}: {e}")
                     
+            elif "competition" in file_name:
+                
+                try:
+                    self.__competition_to_csv(folder_path, file_path)
                     
-    
+                except Exception as e:
+                    print(f"Error procesando {file_path}: {e}")
+                    
+            elif "matches" in file_name:
+                
+                try:
+                    self.__matches_to_csv(folder_path, file_path)
+                    
+                except Exception as e:
+                    print(f"Error procesando {file_path}: {e}")
+                    
+                    
     def __standings_to_csv(self, folder_path, file_path) -> None:
         # Asumimos que hay un solo objeto JSON por archivo
         
-        raw_data_str = self.rows[0][0]  # primer dict completo del archivo
-        raw_data = json.loads(raw_data_str)
+        raw_data_str_standings = self.rows[0][0]  # primer dict completo del archivo
+        raw_data_standings = json.loads(raw_data_str_standings)
 
         # Extraer standings > table
-        table = raw_data["standings"][0]["table"]
+        table = raw_data_standings["standings"][0]["table"]
 
         # Normalizar a DataFrame
-        df = pd.json_normalize(table)
+        df_standings = pd.json_normalize(table)
 
         # Seleccionar columnas clave
-        df_final = df[[
+        df_final_standings = df_standings[[
             "position", "team.name", "playedGames", "points",
             "won", "draw", "lost", "goalsFor", "goalsAgainst", "goalDifference"
         ]]
@@ -171,22 +156,63 @@ class snowflake_connector:
         # Guardar CSV
         output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
         output_file = f"{folder_path}" + output_name
-        df_final.to_csv(output_file, index=False)
+        df_final_standings.to_csv(output_file, index=False)
 
         print(f"Guardado como: {output_file}")
         
     
-    def __compatition_to_csv(self) -> None:
+    def __competition_to_csv(self, folder_path, file_path) -> None:
         
-        with open("data/temp_raw/competition_BL1.json", "r") as f:
-            data = json.load(f)
-
-        # Extraer la parte tabular
-        seasons = data["seasons"]
-
+        raw_data_str_competitions = self.rows[0][0]
+        raw_data_competitions = json.loads(raw_data_str_competitions)
+        
+        season_table = raw_data_competitions["seasons"]
+        
         # Normalizar la lista de temporadas
-        df = pd.json_normalize(seasons, sep='.', max_level=1)
+        df_competitions = pd.json_normalize(season_table, sep='.', max_level=1)
+        
+        df_final_competitions = df_competitions[["endDate", "id", "startDate", "winner.address", "winner.clubColors", "winner.founded", "winner.id",
+                       "winner.name", "winner.shortName", "winner.tla", "winner.venue"]]
 
         # Guardar como CSV
-        df.to_csv("data/processed/seasons_BL1.csv", index=False)
-
+        output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
+        output_file = f"{folder_path}" + output_name
+        df_final_competitions.to_csv(output_file, index=False)
+        
+        print(f"Guardado como: {output_file}")
+        
+    def __matches_to_csv(self, folder_path, file_path):
+        
+        raw_data_str_matches =self.rows[0][0]
+        raw_data_matches =json.loads(raw_data_str_matches)
+        
+        match_table = raw_data_matches["matches"]
+        
+        main_refs = []
+        
+        for match in match_table:
+            try:
+                ref = match["referees"][0]["name"]
+                main_refs.append(ref)
+                
+            except Exception as e:
+                main_refs.append(None)
+                print(f"Could not extract referee name for {file_path}: {e}")
+                            
+        df_matches = pd.json_normalize(match_table)
+        
+        df_matches["main_referee"] = main_refs
+                
+        df_matches_final = df_matches[["id", "matchday", "stage", "main_referee", "status", "utcDate", "area.code", "area.id", "area.name",
+                                       "awayTeam.id", "awayTeam.name", "awayTeam.shortName", "awayTeam.tla", "competition.code",
+                                       "competition.id", "competition.name", "competition.type", "homeTeam.id", "homeTeam.name",
+                                       "homeTeam.shortName", "homeTeam.tla", "score.duration", "score.fullTime.away", "score.fullTime.home", 
+                                       "score.halfTime.away", "score.halfTime.home", "score.winner", "season.currentMatchday", 
+                                       "season.endDate", "season.id", "season.startDate"]]
+        
+        
+        output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
+        output_file = f"{folder_path}" + output_name
+        df_matches_final.to_csv(output_file, index=False)
+        
+        print(f"Guardado como: {output_file}")
