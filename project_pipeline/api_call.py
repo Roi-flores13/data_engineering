@@ -21,20 +21,9 @@ class api_manager:
 
         competitions_full = parameter_data["competitions"] # Extrae todas las competencias
 
-        competitions_codes = [competition["code"] for competition in competitions_full if competition["code"] not in [2000, 2018, 2152]] # Extrae todos los códigos de todas las competencias
         competitions_id = [competition["id"] for competition in competitions_full if competition["id"] not in [2000, 2018, 2152]] # Extrae todos los ids para las competencias
 
         start = time.time()
-        
-        for code in competitions_codes:
-            
-            competitions_response = requests.get(url=f'https://api.football-data.org/v4/competitions/{code}', headers=self.headers)
-            competition_data = competitions_response.json()
-            
-            with open(f"data/temp_raw/competition_{code}.json", "w", encoding="UTF-8") as competition_json:
-                json.dump(competition_data, competition_json, indent=4)
-                
-            time.sleep(5)
             
         different_suffixes = ["matches", "standings"]
 
@@ -48,30 +37,11 @@ class api_manager:
                 with open(f"data/temp_raw/{suffix}_{id}.json", "w", encoding="UTF-8") as data_json:
                     json.dump(match_data, data_json, indent=4)
                     
-                time.sleep(5)
+                time.sleep(5.5)
                 
-        # self.__prepare_json_for_snowflake()
-        
         finish = time.time()
         
         print(f"Archivos bajados en {round(finish-start, 2)} segundos")
-
-
-    def __prepare_json_for_snowflake(self, file_path="data/temp_raw"):
-        for file in os.listdir(file_path):
-            temp_path = os.path.join(file_path, file)
-
-            with open(temp_path, "r") as f:
-                data = json.load(f)
-
-            # Guarda como JSON minificado
-            output_file = temp_path.replace(".json", "_minified.json")
-            with open(output_file, "w") as out:
-                json.dump(data, out)
-            print(f"Guardado como minificado JSON: {output_file}")
-            
-            os.remove(temp_path)
-
       
     @staticmethod          
     def api_data_eraser(file_path="data/temp_raw") -> None:
