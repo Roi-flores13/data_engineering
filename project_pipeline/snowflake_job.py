@@ -83,11 +83,11 @@ class snowflake_connector:
         
         cursor = self.conn.cursor()
 
-        # 1. Usar base y schema
+        # Usar base y schema
         cursor.execute("USE DATABASE FUTBOL_DATA")
         cursor.execute("USE SCHEMA STORAGE")
 
-        # 2. Listar archivos en el stage
+        # Listar archivos en el stage
         cursor.execute("LIST @DATALAKE_FUTBOL")
         files = cursor.fetchall()
 
@@ -98,7 +98,7 @@ class snowflake_connector:
 
             print(f"Procesando: {file_name}")
 
-            # 3. Leer JSON como texto (cada fila es un dict)
+            # Leer JSON como texto
             cursor.execute(f"""
                 SELECT $1 
                 FROM @DATALAKE_FUTBOL/{file_name}
@@ -117,15 +117,7 @@ class snowflake_connector:
                     
                 except Exception as e:
                     print(f"Error procesando {file_path}: {e}")
-                    
-            elif "competition" in file_name:
-                
-                try:
-                    self.__competition_to_csv(folder_path, file_path)
-                    
-                except Exception as e:
-                    print(f"Error procesando {file_path}: {e}")
-                    
+                                        
             elif "matches" in file_name:
                 
                 try:
@@ -143,14 +135,25 @@ class snowflake_connector:
 
         # Extraer standings > table
         table = raw_data_standings["standings"][0]["table"]
+        
+        competition_id = raw_data_standings["competition"]["id"]
+        competition_name = raw_data_standings["competition"]["name"]
+        competition_code = raw_data_standings["competition"]["code"]
 
         # Normalizar a DataFrame
         df_standings = pd.json_normalize(table)
+        
+        df_replaced = df_standings.rename(columns= lambda x: x.replace(".", "_"))
+        
+        df_replaced["competition_id"] = competition_id
+        df_replaced["competition_name"] = competition_name
+        df_replaced["competition_code"] = competition_code
 
         # Seleccionar columnas clave
-        df_final_standings = df_standings[[
-            "position", "team.name", "playedGames", "points",
-            "won", "draw", "lost", "goalsFor", "goalsAgainst", "goalDifference"
+        df_final_standings = df_replaced[[
+            "position", "team_name", "playedGames", "points",
+            "won", "draw", "lost", "goalsFor", "goalsAgainst", "goalDifference", "competition_id",
+            "competition_name", "competition_code"
         ]]
 
         # Guardar CSV
@@ -159,32 +162,11 @@ class snowflake_connector:
         df_final_standings.to_csv(output_file, index=False)
 
         print(f"Guardado como: {output_file}")
-        
-    
-    def __competition_to_csv(self, folder_path, file_path) -> None:
-        
-        raw_data_str_competitions = self.rows[0][0]
-        raw_data_competitions = json.loads(raw_data_str_competitions)
-        
-        season_table = raw_data_competitions["seasons"]
-        
-        # Normalizar la lista de temporadas
-        df_competitions = pd.json_normalize(season_table, sep='.', max_level=1)
-        
-        df_final_competitions = df_competitions[["endDate", "id", "startDate", "winner.address", "winner.clubColors", "winner.founded", "winner.id",
-                       "winner.name", "winner.shortName", "winner.tla", "winner.venue"]]
-
-        # Guardar como CSV
-        output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
-        output_file = f"{folder_path}" + output_name
-        df_final_competitions.to_csv(output_file, index=False)
-        
-        print(f"Guardado como: {output_file}")
-        
+                
     def __matches_to_csv(self, folder_path, file_path):
         
         raw_data_str_matches =self.rows[0][0]
-        raw_data_matches =json.loads(raw_data_str_matches)
+        raw_data_matches = json.loads(raw_data_str_matches)
         
         match_table = raw_data_matches["matches"]
         
@@ -202,13 +184,15 @@ class snowflake_connector:
         df_matches = pd.json_normalize(match_table)
         
         df_matches["main_referee"] = main_refs
+        
+        df_renamed = df_matches.rename(columns= lambda x: x.replace(".", "_"))
                 
-        df_matches_final = df_matches[["id", "matchday", "stage", "main_referee", "status", "utcDate", "area.code", "area.id", "area.name",
-                                       "awayTeam.id", "awayTeam.name", "awayTeam.shortName", "awayTeam.tla", "competition.code",
-                                       "competition.id", "competition.name", "competition.type", "homeTeam.id", "homeTeam.name",
-                                       "homeTeam.shortName", "homeTeam.tla", "score.duration", "score.fullTime.away", "score.fullTime.home", 
-                                       "score.halfTime.away", "score.halfTime.home", "score.winner", "season.currentMatchday", 
-                                       "season.endDate", "season.id", "season.startDate"]]
+        df_matches_final = df_renamed[["id", "matchday", "stage", "main_referee", "status", "utcDate", "area_code", "area_id", "area_name",
+                                       "awayTeam_id", "awayTeam_name", "awayTeam_shortName", "awayTeam_tla", "competition_code",
+                                       "competition_id", "competition_name", "competition_type", "homeTeam_id", "homeTeam_name",
+                                       "homeTeam_shortName", "homeTeam_tla", "score_duration", "score_fullTime_away", "score_fullTime_home", 
+                                       "score_halfTime_away", "score_halfTime_home", "score_winner", "season_currentMatchday", 
+                                       "season_endDate", "season_id", "season_startDate"]]
         
         
         output_name = file_path.split('/')[-1].replace('.json', '_table.csv')
