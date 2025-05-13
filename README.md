@@ -4,7 +4,9 @@ This project consists of downloading soccer stats (Standings and all matches) of
 
 The code is divided in 3 files:
 
-    1. project_pipeline/api_call.py - creates a class __api_manager__ which has 2 methods. The first one extracts data from the api <br /> and filters out the data that is not useful. The second method consists of a static method which deletes all data from the <br /> designated file (this method is used to erase files from the temporary repositories fo data) 
+    1. project_pipeline/api_call.py - creates a class __api_manager__ which has 2 methods. The first one extracts data from the api  
+    and filters out the data that is not useful. The second method consists of a static method which deletes all data from the  
+    designated file (this method is used to erase files from the temporary repositories fo data) 
 
     2. project_pipeline/snowflake_job.py - This file creates another class __snowflake_connector__ which does 3 main jobs.
         1. Upload and delete data from snowflake scenes (datalakes)
