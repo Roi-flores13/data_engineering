@@ -4,16 +4,27 @@ This project consists of downloading soccer stats (Standings and all matches) of
 
 The code is divided in 3 files:
 
-    1. project_pipeline/api_call.py - creates a class __api_manager__ which has 2 methods. The first one extracts data from the api  
+    1. project_pipeline/api_call.py - creates a class api_manager which has 2 methods. The first one extracts data from the api  
     and filters out the data that is not useful. The second method consists of a static method which deletes all data from the  
     designated file (this method is used to erase files from the temporary repositories fo data) 
 
-    2. project_pipeline/snowflake_job.py - This file creates another class __snowflake_connector__ which does 3 main jobs.
+    2. project_pipeline/snowflake_job.py - This file creates another class snowflake_connector which does 3 main jobs.
         1. Upload and delete data from snowflake scenes (datalakes)
         2. Extract data from datalake and convert the json files to csv files
         3. Create and upload those csv files to a snowflake table
 
     3. main.py - file where the pipeline is ran.
+
+## Piepline execution
+    
+    1. Must install libraries inside of the requirements.txt (try pip install -r requirements.txt)
+    2. Install snowsql and inside .snowsql/config enter your snowflake credentials, database name and stage name
+    3. If you don't have a snowflake account, create an account and dump your credentials in a .env file.  
+    Also, login in the [API](https://www.football-data.org/client/login) and dump you API_key in the same .env file
+    4. Execute the main.py file (There is already a suggested order of execution in the main file)
+    <br>
+    Side Note: When running methods inside the snowflake_connector class make sure to set the parameters according to the name  
+    of your own snowflake connection, datalakes and temporary local folder
 
 ## Project Organization
 
@@ -45,6 +56,8 @@ The code is divided in 3 files:
 |    |                              transformed data to a table.
 |    │
 ¨```
+
+
 
 --------
 
