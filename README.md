@@ -21,8 +21,7 @@ The code is divided in 3 files:
     2. Install snowsql and inside .snowsql/config enter your snowflake credentials, database name and stage name
     3. If you don't have a snowflake account, create an account and dump your credentials in a .env file.  
     Also, login in the [API](https://www.football-data.org/client/login) and dump you API_key in the same .env file
-    4. Execute the main.py file (There is already a suggested order of execution in the main file)
-    <br>
+    4. Execute the main.py file (There is already a suggested order of execution in the main file)  
     Side Note: When running methods inside the snowflake_connector class make sure to set the parameters according to the name  
     of your own snowflake connection, datalakes and temporary local folder
 
