@@ -55,7 +55,7 @@ class snowflake_connector:
             print(e.stderr)
         
         if erase_api_temp:
-            api_manager.api_data_eraser()
+            api_manager.api_data_eraser(file_path=local_folder_path)
         
             
     def erase_everything_from_datalake(self, stage_name="@DATALAKE_FUTBOL", connection="my_connection") -> None:
@@ -200,3 +200,64 @@ class snowflake_connector:
         df_matches_final.to_csv(output_file, index=False)
         
         print(f"Guardado como: {output_file}")
+        
+    def create_tables(self) -> None:
+        cursor = self.conn.cursor()
+        
+        sql_script = """
+        
+        CREATE OR REPLACE TABLE FUTBOL_DATA.STORAGE.MATCHES(
+        id INT, matchday INT, stage VARCHAR, main_referee VARCHAR, status VARCHAR, utcDate DATETIME, area_code VARCHAR,
+        area_id INT, area_name VARCHAR, awayTeam_id INT, awayTeam_name VARCHAR, awayTeam_shortName VARCHAR,
+        awayTeam_tla VARCHAR, competition_code VARCHAR, competition_id INT, competition_name VARCHAR, competition_type VARCHAR,
+        homeTeam_id INT, homeTeam_name VARCHAR, homeTeam_shortName VARCHAR, homeTeam_tla VARCHAR, score_duration VARCHAR,
+        score_fullTime_away INT, score_fullTime_home INT, score_halfTime_away INT, score_halfTime_home INT, score_winner VARCHAR,
+        season_currentMatchday INT, season_endDate DATE, season_id INT, season_startDate DATE
+        );
+        
+        CREATE OR REPLACE TABLE FUTBOL_DATA.STORAGE.STANDINGS(
+        position INT, team_name VARCHAR, playedGames INT, points INT, won INT, draw INT, lost INT, goalsFor INT,
+        goalsAgainst INT, goalDifference INT, competition_id VARCHAR, competition_name VARCHAR, competition_code VARCHAR
+        );
+        """
+        
+        for script in sql_script.strip().split(";"):
+            cursor.execute(script)
+        
+        print("Tablas creadas exitosamente")
+        
+    def upload_data_to_table(self, file_path="data/processed", stage_name="@TEMPORARY_REPO_FOR_CSV") -> None:
+        
+        self.upload_to_snowflake_datalake(local_folder_path=file_path, stage_name=stage_name)
+        
+        cursor = self.conn.cursor()
+
+        # Usar base y schema
+        cursor.execute("USE DATABASE FUTBOL_DATA")
+        cursor.execute("USE SCHEMA STORAGE")
+
+        # Listar archivos en el stage
+        cursor.execute("LIST @TEMPORARY_REPO_FOR_CSV")
+        files = cursor.fetchall()
+    
+        for file in files:
+            file_name = file[0]
+            print(f"Subiendo archivo: {file_name}")
+            
+            if "match" in file_name.lower():
+                
+                cursor.execute(f"""
+                COPY INTO FUTBOL_DATA.STORAGE.MATCHES
+                FROM @{file_name}
+                FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY = '"' SKIP_HEADER = 1)
+                """)
+                
+            elif "standings" in file_name.lower():
+    
+                cursor.execute(f"""
+                COPY INTO FUTBOL_DATA.STORAGE.STANDINGS
+                FROM @{file_name}
+                FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY = '"' SKIP_HEADER = 1)
+                """)
+                    
+            print(f"Archivo {file_name} subido correctamente")
